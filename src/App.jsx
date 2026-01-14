@@ -37,8 +37,8 @@ function App() {
             <p>Click the floating buttons to open each agent widget:</p>
             <ul>
               <li><strong>Left side:</strong> DigitalOcean Agent Widget</li>
-              <li><strong>Right (Above) side:</strong> Custom Agent Widgets (Admin)</li>
-              <li><strong>Right (Below) side:</strong> Custom Agent Widgets (General User)</li>
+              <li><strong>Right (Below) side:</strong> Custom Agent Widgets (Admin)</li>
+              <li><strong>Right (Above) side:</strong> Custom Agent Widgets (General User)</li>
             </ul>
           </div>
         </div>

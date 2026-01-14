@@ -183,6 +183,7 @@
 /* Admin widget window positioned below */
 .admin-widget .agent-window {
   bottom: 80px;
+  right: 100px;
 }
 
 .agent-window.maximized {
