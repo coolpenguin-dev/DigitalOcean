@@ -1,0 +1,377 @@
+import { useState, useRef, useEffect } from 'react'
+import './App.css'
+
+// Format message content with markdown support
+const formatMessage = (content) => {
+  if (!content) return ''
+  
+  // Replace \n with actual line breaks
+  let formatted = content.replace(/\\n/g, '\n')
+  
+  // Escape HTML to prevent XSS (must be done first)
+  formatted = formatted
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  
+  // Convert **text** to <strong>text</strong> (handle bold first)
+  // Use non-greedy matching to handle multiple bold sections
+  formatted = formatted.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+  
+  // Convert remaining single *text* to <em>text</em>
+  // This will only match single asterisks that aren't part of **
+  formatted = formatted.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+  
+  // Split by double newlines (or more) to create paragraphs
+  const paragraphs = formatted.split(/\n\s*\n+/)
+  
+  const formattedParagraphs = paragraphs.map((para) => {
+    // Trim whitespace
+    para = para.trim()
+    if (!para) return ''
+    
+    // Replace single newlines with <br> within paragraphs
+    const lines = para.split('\n')
+    const withBreaks = lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join('<br />')
+    
+    return withBreaks ? `<p>${withBreaks}</p>` : ''
+  }).filter(p => p.length > 0)
+  
+  // If no paragraphs were created, wrap the whole thing
+  if (formattedParagraphs.length === 0) {
+    const lines = formatted.split('\n')
+    const withBreaks = lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join('<br />')
+    return withBreaks ? `<p>${withBreaks}</p>` : formatted
+  }
+  
+  return formattedParagraphs.join('')
+}
+
+function App() {
+  const [isOpen, setIsOpen] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: 'Hello! How can I help you today?'
+    }
+  ])
+  const [inputValue, setInputValue] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [showQuickActions, setShowQuickActions] = useState(true)
+  const messagesEndRef = useRef(null)
+
+  const formatTimestamp = () => {
+    const now = new Date()
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    const day = days[now.getDay()]
+    const month = months[now.getMonth()]
+    const date = now.getDate()
+    const year = now.getFullYear()
+    let hours = now.getHours()
+    const minutes = now.getMinutes().toString().padStart(2, '0')
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    hours = hours % 12
+    hours = hours ? hours : 12
+    return `${day}, ${month} ${date}, ${year} | ${hours}:${minutes} ${ampm}`
+  }
+
+  const clearMessages = () => {
+    setMessages([{
+      role: 'assistant',
+      content: 'Hello! How can I help you today?'
+    }])
+    setShowQuickActions(true)
+  }
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom()
+    }
+  }, [messages, isOpen])
+
+  const handleQuickAction = (actionText) => {
+    setShowQuickActions(false)
+    const userMessage = {
+      role: 'user',
+      content: actionText
+    }
+    setMessages(prev => [...prev, userMessage])
+    handleSendMessage(actionText)
+  }
+
+  const handleSendMessage = async (messageText) => {
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('https://cjwxqfo73qvnnhcdywjzd5lz.agents.do-ai.run/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer TAlLBNDqPKEfVpknNkwr6ETZSdaQYufU',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: [
+            ...messages.map(msg => ({ role: msg.role, content: msg.content })),
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          stream: false,
+          include_functions_info: false,
+          include_retrieval_info: false,
+          include_guardrails_info: false
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('API Response:', data)
+      
+      // Extract the assistant's message from the response
+      const assistantMessage = data.choices?.[0]?.message?.content || 'Sorry, I couldn\'t process that request.'
+      
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: assistantMessage
+      }])
+    } catch (error) {
+      console.error('Error calling agent API:', error)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, there was an error connecting to the agent. Please try again.'
+      }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSend = async (e) => {
+    e.preventDefault()
+    if (!inputValue.trim() || isLoading) return
+
+    setShowQuickActions(false)
+    const userMessage = {
+      role: 'user',
+      content: inputValue
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    const currentInput = inputValue
+    setInputValue('')
+    await handleSendMessage(currentInput)
+  }
+
+  return (
+    <div className="dashboard">
+      <header className="dashboard-header">
+        <div className="header-content">
+          <h1>DigitalOcean Agent Dashboard</h1>
+          <p className="header-subtitle">Compare both agent widgets side by side</p>
+        </div>
+      </header>
+
+      <main className="dashboard-main">
+        <div className="dashboard-content">
+          <div className="info-card">
+            <h2>Agent Comparison Dashboard</h2>
+            <p>Click the floating buttons to open each agent widget:</p>
+            <ul>
+              <li><strong>Left side:</strong> DigitalOcean Agent Widget</li>
+              <li><strong>Right side:</strong> Custom Agent Widget</li>
+            </ul>
+          </div>
+        </div>
+      </main>
+
+      {/* Custom Agent Widget - Floating Button and Window */}
+      <div className={`custom-agent-widget ${isOpen ? 'open' : ''}`}>
+        {isOpen && (
+          <div className={`agent-window ${isMaximized ? 'maximized' : ''}`}>
+            <div className="agent-window-header">
+              <h3>Paz - General User</h3>
+              <div className="header-actions">
+                <button 
+                  className="header-icon-button"
+                  onClick={() => setIsMaximized(!isMaximized)}
+                  aria-label={isMaximized ? 'Restore' : 'Maximize'}
+                >
+                  {isMaximized ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                    </svg>
+                  )}
+                </button>
+                <button 
+                  className="header-icon-button"
+                  onClick={() => setIsOpen(false)}
+                  aria-label="Close agent"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="agent-messages">
+              <div className="messages-timestamp">{formatTimestamp()}</div>
+              {messages.map((message, index) => (
+                <div key={index} className={`message ${message.role}`}>
+                  {message.role === 'assistant' && (
+                    <div className="message-avatar">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="8" r="4" fill="white"/>
+                        <path d="M6 21c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="white"/>
+                      </svg>
+                    </div>
+                  )}
+                  <div className="message-content">
+                    <div 
+                      className="message-text"
+                      dangerouslySetInnerHTML={{ 
+                        __html: message.role === 'assistant' 
+                          ? formatMessage(message.content) 
+                          : message.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                      }}
+                    />
+                    {message.role === 'user' && (
+                      <div className="message-status">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Read {new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                      </div>
+                    )}
+                  </div>
+                  {message.role === 'user' && (
+                    <div className="message-checkmark">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="10" fill="#4CAF50"/>
+                        <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div className="message assistant">
+                  <div className="message-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="8" r="4" fill="white"/>
+                      <path d="M6 21c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="white"/>
+                    </svg>
+                  </div>
+                  <div className="message-content">
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+              {showQuickActions && messages.length === 1 && (
+                <div className="quick-actions">
+                  <button 
+                    className="quick-action-button"
+                    onClick={() => handleQuickAction('Product Tour')}
+                  >
+                    Start Product Tour
+                  </button>
+                  <button 
+                    className="quick-action-button"
+                    onClick={() => handleQuickAction('Help with a Task')}
+                  >
+                    Help with a Task
+                  </button>
+                  <button 
+                    className="quick-action-button"
+                    onClick={() => handleQuickAction('Ask a Question')}
+                  >
+                    Ask a Question
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {messages.length > 1 && (
+              <div className="clear-messages-container">
+                <button
+                  type="button"
+                  className="clear-messages-button"
+                  onClick={clearMessages}
+                >
+                  Clear Messages
+                </button>
+              </div>
+            )}
+
+            <div className="agent-input-container">
+              <form className="agent-input-form" onSubmit={handleSend}>
+                <input
+                  type="text"
+                  className="agent-input"
+                  placeholder="Type your message..."
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  className="send-button"
+                  disabled={!inputValue.trim() || isLoading}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+        
+        <button 
+          className="agent-toggle-button"
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? 'Close agent' : 'Open agent'}
+        >
+          {isOpen ? (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          ) : (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default App

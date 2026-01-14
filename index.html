@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DigitalOcean Agent Dashboard</title>
+    <style>
+      /* Position DigitalOcean agent widget on the left */
+      [id*="chatbot-widget"],
+      [id*="chatbot"],
+      [class*="chatbot-widget"],
+      [class*="chatbot-button"],
+      iframe[src*="chatbot"],
+      iframe[src*="do-ai"] {
+        position: fixed !important;
+        left: 2rem !important;
+        bottom: 2rem !important;
+        right: auto !important;
+        top: auto !important;
+        z-index: 1000 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script async
+      src="https://cjwxqfo73qvnnhcdywjzd5lz.agents.do-ai.run/static/chatbot/widget.js"
+      data-agent-id="f1a30322-c8ed-11f0-b074-4e013e2ddde4"
+      data-chatbot-id="g1qjN3PiI4ZrJFQi9cKgkXm8UC6XprII"
+      data-name="Paz - General User"
+      data-primary-color="#031B4E"
+      data-secondary-color="#E5E8ED"
+      data-button-background-color="#0061EB"
+      data-starting-message="Hello! How can I help you today?"
+      data-logo="/static/chatbot/icons/default-agent.svg">
+    </script>
+  </body>
+</html>
