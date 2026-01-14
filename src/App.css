@@ -178,6 +178,7 @@
 /* GU widget window positioned above */
 .gu-widget .agent-window {
   bottom: 160px;
+  right: 100px;
 }
 
 /* Admin widget window positioned below */
