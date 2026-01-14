@@ -106,11 +106,12 @@ function App() {
     // Find the last user message to check if we're still in product tour
     const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
     
-    // Only show buttons if the last user action was product tour related (Product Tour or next)
+    // Only show buttons if the last user action was product tour related (Product Tour, next, or prev)
     // If user clicked "Get Help" or "Ask a Question", the last user message won't be product tour related
     const isStillInTour = lastUserMessage && (
       lastUserMessage.content.toLowerCase().includes('product tour') || 
-      lastUserMessage.content.toLowerCase() === 'next'
+      lastUserMessage.content.toLowerCase() === 'next' ||
+      lastUserMessage.content.toLowerCase() === 'prev'
     )
     
     // Don't show buttons if we've already exited (last message is "How else can I help you?")
@@ -132,6 +133,37 @@ function App() {
     return false
   }
 
+  const hasClickedNext = () => {
+    // Find the most recent "Product Tour" message index
+    let lastProductTourIndex = -1
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user' && messages[i].content.toLowerCase().includes('product tour')) {
+        lastProductTourIndex = i
+        break
+      }
+    }
+    
+    // If no Product Tour found, return false
+    if (lastProductTourIndex === -1) {
+      return false
+    }
+    
+    // Check if there's a "next" message after the most recent Product Tour message
+    // but before any "How else can I help you?" exit message
+    for (let i = lastProductTourIndex + 1; i < messages.length; i++) {
+      // If we hit an exit message, stop checking
+      if (messages[i].role === 'assistant' && messages[i].content === 'How else can I help you?') {
+        break
+      }
+      // If we find a "next" message in this tour session, return true
+      if (messages[i].role === 'user' && messages[i].content.toLowerCase() === 'next') {
+        return true
+      }
+    }
+    
+    return false
+  }
+
   const handleNext = () => {
     const userMessage = {
       role: 'user',
@@ -139,6 +171,15 @@ function App() {
     }
     setMessages(prev => [...prev, userMessage])
     handleSendMessage('next')
+  }
+
+  const handlePrev = () => {
+    const userMessage = {
+      role: 'user',
+      content: 'prev'
+    }
+    setMessages(prev => [...prev, userMessage])
+    handleSendMessage('prev')
   }
 
   const handleExit = () => {
@@ -323,6 +364,15 @@ function App() {
                     )}
                     {message.role === 'assistant' && isInProductTour() && isLastAssistantMessage(index) && !isLoading && (
                       <div className="tour-actions">
+                        {hasClickedNext() && (
+                          <button 
+                            className="tour-button tour-button-prev"
+                            onClick={handlePrev}
+                            disabled={isLoading}
+                          >
+                            Prev
+                          </button>
+                        )}
                         <button 
                           className="tour-button tour-button-next"
                           onClick={handleNext}

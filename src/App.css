@@ -558,6 +558,20 @@
   color: #333;
 }
 
+.tour-button-prev {
+  background: white;
+  color: #0061EB;
+  border-color: #0061EB;
+}
+
+.tour-button-prev:hover:not(:disabled) {
+  background: #f0f7ff;
+  border-color: #0052d4;
+  color: #0052d4;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 97, 235, 0.2);
+}
+
 .tour-button-next {
   background: #0061EB;
   color: white;
