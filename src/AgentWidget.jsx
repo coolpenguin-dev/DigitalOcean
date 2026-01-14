@@ -1,0 +1,486 @@
+import { useState, useRef, useEffect } from 'react'
+import './App.css'
+
+// Format message content with markdown support
+const formatMessage = (content) => {
+  if (!content) return ''
+  
+  // Replace \n with actual line breaks
+  let formatted = content.replace(/\\n/g, '\n')
+  
+  // Escape HTML to prevent XSS (must be done first)
+  formatted = formatted
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  
+  // Convert **text** to <strong>text</strong> (handle bold first)
+  // Use non-greedy matching to handle multiple bold sections
+  formatted = formatted.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>')
+  
+  // Convert remaining single *text* to <em>text</em>
+  // This will only match single asterisks that aren't part of **
+  formatted = formatted.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+  
+  // Split by double newlines (or more) to create paragraphs
+  const paragraphs = formatted.split(/\n\s*\n+/)
+  
+  const formattedParagraphs = paragraphs.map((para) => {
+    // Trim whitespace
+    para = para.trim()
+    if (!para) return ''
+    
+    // Replace single newlines with <br> within paragraphs
+    const lines = para.split('\n')
+    const withBreaks = lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join('<br />')
+    
+    return withBreaks ? `<p>${withBreaks}</p>` : ''
+  }).filter(p => p.length > 0)
+  
+  // If no paragraphs were created, wrap the whole thing
+  if (formattedParagraphs.length === 0) {
+    const lines = formatted.split('\n')
+    const withBreaks = lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join('<br />')
+    return withBreaks ? `<p>${withBreaks}</p>` : formatted
+  }
+  
+  return formattedParagraphs.join('')
+}
+
+// Agent Widget Component
+function AgentWidget({ 
+  endpoint, 
+  accessKey, 
+  title, 
+  widgetClass,
+  isOpen,
+  onToggle
+}) {
+  const [isMaximized, setIsMaximized] = useState(false)
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: 'Hello! How can I help you today?'
+    }
+  ])
+  const [inputValue, setInputValue] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [showQuickActions, setShowQuickActions] = useState(true)
+  const messagesEndRef = useRef(null)
+
+  const formatTimestamp = () => {
+    const now = new Date()
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    const day = days[now.getDay()]
+    const month = months[now.getMonth()]
+    const date = now.getDate()
+    const year = now.getFullYear()
+    let hours = now.getHours()
+    const minutes = now.getMinutes().toString().padStart(2, '0')
+    const ampm = hours >= 12 ? 'PM' : 'AM'
+    hours = hours % 12
+    hours = hours ? hours : 12
+    return `${day}, ${month} ${date}, ${year} | ${hours}:${minutes} ${ampm}`
+  }
+
+  const clearMessages = () => {
+    setMessages([{
+      role: 'assistant',
+      content: 'Hello! How can I help you today?'
+    }])
+    setShowQuickActions(true)
+  }
+
+  const isInProductTour = () => {
+    // Check if user actually started Product Tour
+    const startedProductTour = messages.some(msg => 
+      msg.role === 'user' && 
+      msg.content.toLowerCase().includes('product tour')
+    )
+    
+    // If product tour was never started, don't show buttons
+    if (!startedProductTour) {
+      return false
+    }
+    
+    // Find the last user message to check if we're still in product tour
+    const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
+    
+    // Only show buttons if the last user action was product tour related (Product Tour, next, or prev)
+    // If user clicked "Get Help" or "Ask a Question", the last user message won't be product tour related
+    const isStillInTour = lastUserMessage && (
+      lastUserMessage.content.toLowerCase().includes('product tour') || 
+      lastUserMessage.content.toLowerCase() === 'next' ||
+      lastUserMessage.content.toLowerCase() === 'prev'
+    )
+    
+    // Don't show buttons if we've already exited (last message is "How else can I help you?")
+    const hasExited = messages.length > 0 && 
+      messages[messages.length - 1].role === 'assistant' && 
+      messages[messages.length - 1].content === 'How else can I help you?'
+    
+    // Only show buttons if product tour was started, we're still in it, and haven't exited
+    return startedProductTour && isStillInTour && !hasExited
+  }
+
+  const isLastAssistantMessage = (index) => {
+    // Check if this is the last assistant message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        return i === index
+      }
+    }
+    return false
+  }
+
+  const hasClickedNext = () => {
+    // Find the most recent "Product Tour" message index
+    let lastProductTourIndex = -1
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user' && messages[i].content.toLowerCase().includes('product tour')) {
+        lastProductTourIndex = i
+        break
+      }
+    }
+    
+    // If no Product Tour found, return false
+    if (lastProductTourIndex === -1) {
+      return false
+    }
+    
+    // Check if there's a "next" message after the most recent Product Tour message
+    // but before any "How else can I help you?" exit message
+    for (let i = lastProductTourIndex + 1; i < messages.length; i++) {
+      // If we hit an exit message, stop checking
+      if (messages[i].role === 'assistant' && messages[i].content === 'How else can I help you?') {
+        break
+      }
+      // If we find a "next" message in this tour session, return true
+      if (messages[i].role === 'user' && messages[i].content.toLowerCase() === 'next') {
+        return true
+      }
+    }
+    
+    return false
+  }
+
+  const handleNext = () => {
+    const userMessage = {
+      role: 'user',
+      content: 'next'
+    }
+    setMessages(prev => [...prev, userMessage])
+    handleSendMessage('next')
+  }
+
+  const handlePrev = () => {
+    const userMessage = {
+      role: 'user',
+      content: 'prev'
+    }
+    setMessages(prev => [...prev, userMessage])
+    handleSendMessage('prev')
+  }
+
+  const handleExit = () => {
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: 'How else can I help you?'
+    }])
+    setShowQuickActions(true)
+  }
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      scrollToBottom()
+    }
+  }, [messages, isOpen])
+
+  const handleQuickAction = (actionText) => {
+    setShowQuickActions(false)
+    const userMessage = {
+      role: 'user',
+      content: actionText
+    }
+    setMessages(prev => [...prev, userMessage])
+    handleSendMessage(actionText)
+  }
+
+  const handleSendMessage = async (messageText) => {
+    setIsLoading(true)
+
+    try {
+      const response = await fetch(`${endpoint}/api/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: [
+            ...messages.map(msg => ({ role: msg.role, content: msg.content })),
+            {
+              role: 'user',
+              content: messageText
+            }
+          ],
+          stream: false,
+          include_functions_info: false,
+          include_retrieval_info: false,
+          include_guardrails_info: false
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      console.log('API Response:', data)
+      
+      // Extract the assistant's message from the response
+      const assistantMessage = data.choices?.[0]?.message?.content || 'Sorry, I couldn\'t process that request.'
+      
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: assistantMessage
+      }])
+    } catch (error) {
+      console.error('Error calling agent API:', error)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, there was an error connecting to the agent. Please try again.'
+      }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSend = async (e) => {
+    e.preventDefault()
+    if (!inputValue.trim() || isLoading) return
+
+    setShowQuickActions(false)
+    const userMessage = {
+      role: 'user',
+      content: inputValue
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    const currentInput = inputValue
+    setInputValue('')
+    await handleSendMessage(currentInput)
+  }
+
+  return (
+    <div className={`custom-agent-widget ${widgetClass || ''} ${isOpen ? 'open' : ''}`}>
+      {isOpen && (
+        <div className={`agent-window ${isMaximized ? 'maximized' : ''}`}>
+          <div className="agent-window-header">
+            <h3>{title}</h3>
+            <div className="header-actions">
+              <button 
+                className="header-icon-button"
+                onClick={() => setIsMaximized(!isMaximized)}
+                aria-label={isMaximized ? 'Restore' : 'Maximize'}
+              >
+                {isMaximized ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                  </svg>
+                )}
+              </button>
+              <button 
+                className="header-icon-button"
+                onClick={onToggle}
+                aria-label="Close agent"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="agent-messages">
+            <div className="messages-timestamp">{formatTimestamp()}</div>
+            {messages.map((message, index) => (
+              <div key={index} className={`message ${message.role}`}>
+                {message.role === 'assistant' && (
+                  <div className="message-avatar">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="8" r="4" fill="white"/>
+                      <path d="M6 21c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="white"/>
+                    </svg>
+                  </div>
+                )}
+                <div className="message-content">
+                  <div 
+                    className="message-text"
+                    dangerouslySetInnerHTML={{ 
+                      __html: message.role === 'assistant' 
+                        ? formatMessage(message.content) 
+                        : message.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    }}
+                  />
+                  {message.role === 'user' && (
+                    <div className="message-status">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      <span>Read {new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                    </div>
+                  )}
+                  {message.role === 'assistant' && isInProductTour() && isLastAssistantMessage(index) && !isLoading && (
+                    <div className="tour-actions">
+                      {hasClickedNext() && (
+                        <button 
+                          className="tour-button tour-button-prev"
+                          onClick={handlePrev}
+                          disabled={isLoading}
+                        >
+                          Prev
+                        </button>
+                      )}
+                      <button 
+                        className="tour-button tour-button-next"
+                        onClick={handleNext}
+                        disabled={isLoading}
+                      >
+                        Next
+                      </button>
+                      <button 
+                        className="tour-button tour-button-exit"
+                        onClick={handleExit}
+                      >
+                        Exit
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {message.role === 'user' && (
+                  <div className="message-checkmark">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="10" fill="#4CAF50"/>
+                      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="message assistant">
+                <div className="message-avatar">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="8" r="4" fill="white"/>
+                    <path d="M6 21c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="white"/>
+                  </svg>
+                </div>
+                <div className="message-content">
+                  <div className="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+            {showQuickActions && (messages.length === 1 || (messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content === 'How else can I help you?')) && (
+              <div className="quick-actions">
+                <button 
+                  className="quick-action-button"
+                  onClick={() => handleQuickAction('Product Tour')}
+                >
+                  Start Product Tour
+                </button>
+                <button 
+                  className="quick-action-button"
+                  onClick={() => handleQuickAction('Help with a Task')}
+                >
+                  Help with a Task
+                </button>
+                <button 
+                  className="quick-action-button"
+                  onClick={() => handleQuickAction('Ask a Question')}
+                >
+                  Ask a Question
+                </button>
+              </div>
+            )}
+          </div>
+
+          {messages.length > 1 && (
+            <div className="clear-messages-container">
+              <button
+                type="button"
+                className="clear-messages-button"
+                onClick={clearMessages}
+              >
+                Clear Messages
+              </button>
+            </div>
+          )}
+
+          <div className="agent-input-container">
+            <form className="agent-input-form" onSubmit={handleSend}>
+              <input
+                type="text"
+                className="agent-input"
+                placeholder="Type your message..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                disabled={isLoading}
+              />
+              <button
+                type="submit"
+                className="send-button"
+                disabled={!inputValue.trim() || isLoading}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      <button 
+        className="agent-toggle-button"
+        onClick={onToggle}
+        aria-label={isOpen ? 'Close agent' : 'Open agent'}
+      >
+        {isOpen ? (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        ) : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        )}
+      </button>
+    </div>
+  )
+}
+
+export default AgentWidget

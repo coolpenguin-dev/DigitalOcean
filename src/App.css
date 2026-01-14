@@ -108,6 +108,18 @@
   z-index: 1000;
 }
 
+/* Admin widget positioned below */
+.custom-agent-widget.admin-widget {
+  bottom: 2rem;
+  z-index: 1000;
+}
+
+/* GU widget positioned above */
+.custom-agent-widget.gu-widget {
+  bottom: 10rem;
+  z-index: 1001;
+}
+
 /* Agent Toggle Button */
 .agent-toggle-button {
   width: 56px;
@@ -161,6 +173,16 @@
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   transform-origin: bottom right;
+}
+
+/* GU widget window positioned above */
+.gu-widget .agent-window {
+  bottom: 160px;
+}
+
+/* Admin widget window positioned below */
+.admin-widget .agent-window {
+  bottom: 80px;
 }
 
 .agent-window.maximized {
