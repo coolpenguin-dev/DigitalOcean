@@ -536,6 +536,63 @@
   box-shadow: 0 0 0 3px rgba(0, 97, 235, 0.1);
 }
 
+/* Tour Actions */
+.tour-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.tour-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  text-align: center;
+  background: white;
+  color: #333;
+}
+
+.tour-button-next {
+  background: #0061EB;
+  color: white;
+  border-color: #0061EB;
+}
+
+.tour-button-next:hover:not(:disabled) {
+  background: #0052d4;
+  border-color: #0052d4;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 97, 235, 0.3);
+}
+
+.tour-button-exit {
+  background: white;
+  color: #666;
+  border-color: #e0e0e0;
+}
+
+.tour-button-exit:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+  color: #333;
+}
+
+.tour-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tour-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 97, 235, 0.1);
+}
+
 /* Agent Input Container */
 .agent-input-container {
   border-top: 1px solid #e0e0e0;

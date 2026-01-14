@@ -91,6 +91,64 @@ function App() {
     setShowQuickActions(true)
   }
 
+  const isInProductTour = () => {
+    // Check if user actually started Product Tour
+    const startedProductTour = messages.some(msg => 
+      msg.role === 'user' && 
+      msg.content.toLowerCase().includes('product tour')
+    )
+    
+    // If product tour was never started, don't show buttons
+    if (!startedProductTour) {
+      return false
+    }
+    
+    // Find the last user message to check if we're still in product tour
+    const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
+    
+    // Only show buttons if the last user action was product tour related (Product Tour or next)
+    // If user clicked "Get Help" or "Ask a Question", the last user message won't be product tour related
+    const isStillInTour = lastUserMessage && (
+      lastUserMessage.content.toLowerCase().includes('product tour') || 
+      lastUserMessage.content.toLowerCase() === 'next'
+    )
+    
+    // Don't show buttons if we've already exited (last message is "How else can I help you?")
+    const hasExited = messages.length > 0 && 
+      messages[messages.length - 1].role === 'assistant' && 
+      messages[messages.length - 1].content === 'How else can I help you?'
+    
+    // Only show buttons if product tour was started, we're still in it, and haven't exited
+    return startedProductTour && isStillInTour && !hasExited
+  }
+
+  const isLastAssistantMessage = (index) => {
+    // Check if this is the last assistant message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        return i === index
+      }
+    }
+    return false
+  }
+
+  const handleNext = () => {
+    const userMessage = {
+      role: 'user',
+      content: 'next'
+    }
+    setMessages(prev => [...prev, userMessage])
+    handleSendMessage('next')
+  }
+
+  const handleExit = () => {
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      content: 'How else can I help you?'
+    }])
+    setShowQuickActions(true)
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -263,6 +321,23 @@ function App() {
                         <span>Read {new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                       </div>
                     )}
+                    {message.role === 'assistant' && isInProductTour() && isLastAssistantMessage(index) && !isLoading && (
+                      <div className="tour-actions">
+                        <button 
+                          className="tour-button tour-button-next"
+                          onClick={handleNext}
+                          disabled={isLoading}
+                        >
+                          Next
+                        </button>
+                        <button 
+                          className="tour-button tour-button-exit"
+                          onClick={handleExit}
+                        >
+                          Exit
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {message.role === 'user' && (
                     <div className="message-checkmark">
@@ -292,7 +367,7 @@ function App() {
                 </div>
               )}
               <div ref={messagesEndRef} />
-              {showQuickActions && messages.length === 1 && (
+              {showQuickActions && (messages.length === 1 || (messages.length > 0 && messages[messages.length - 1].role === 'assistant' && messages[messages.length - 1].content === 'How else can I help you?')) && (
                 <div className="quick-actions">
                   <button 
                     className="quick-action-button"
