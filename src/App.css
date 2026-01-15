@@ -572,7 +572,7 @@
 .tour-button {
   padding: 0.5rem 1rem;
   border: 1px solid #e0e0e0;
-  border-radius: 6px;
+  border-radius: 25px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -706,7 +706,7 @@
 .agent-input {
   flex: 1;
   padding: 0.625rem 0.875rem;
-  border: 2px solid #000;
+  border: 0px solid #000;
   border-radius: 20px;
   font-size: 0.875rem;
   outline: none;
@@ -723,8 +723,8 @@
 }
 
 .agent-input:focus {
-  border-color: #0061EB;
-  box-shadow: 0 0 0 1px #0061EB;
+  border-color: #242b35;
+  box-shadow: 0 0 0 2px #242b35;
 }
 
 .agent-input:disabled {
@@ -738,7 +738,7 @@
   height: 36px;
   border: none;
   border-radius: 8px;
-  background: #0061EB;
+  background: #213547;
   color: white;
   cursor: pointer;
   display: flex;
@@ -750,17 +750,17 @@
 }
 
 .send-button:hover:not(:disabled) {
-  background: #0052d4;
+  background: #2d4153;
 }
 
 .send-button:active:not(:disabled) {
-  background: #0047b8;
+  background: #2d4153;
 }
 
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #0061EB;
+  background: #213547;
 }
 
 /* Global styles for DigitalOcean agent widget positioning */
