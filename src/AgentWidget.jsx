@@ -113,12 +113,14 @@ function AgentWidget({
     // Find the last user message to check if we're still in product tour
     const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
     
-    // Only show buttons if the last user action was product tour related (Product Tour, next, or prev)
-    // If user clicked "Get Help" or "Ask a Question", the last user message won't be product tour related
+    // Check if the last user action was product tour related
+    // Includes: Product Tour, next, prev, or item number selections (e.g., #6, 6, #1, etc.)
+    const isItemNumber = lastUserMessage && /^#?\d+$/.test(lastUserMessage.content.trim())
     const isStillInTour = lastUserMessage && (
       lastUserMessage.content.toLowerCase().includes('product tour') || 
       lastUserMessage.content.toLowerCase() === 'next' ||
-      lastUserMessage.content.toLowerCase() === 'prev'
+      lastUserMessage.content.toLowerCase() === 'prev' ||
+      isItemNumber
     )
     
     // Don't show buttons if we've already exited (last message is "How else can I help you?")
@@ -140,6 +142,50 @@ function AgentWidget({
     return false
   }
 
+  const getCurrentStepNumber = () => {
+    // Find the last assistant message
+    const lastAssistantMessage = [...messages].reverse().find(msg => msg.role === 'assistant')
+    
+    if (!lastAssistantMessage) {
+      return null
+    }
+    
+    const content = lastAssistantMessage.content
+    
+    // Try to extract step number from various formats:
+    // "Step 5", "step 5", "Step: 5", "step: 5", "Step 5:", "step 5:", etc.
+    // Also check for patterns like "Step 5 of 14" or just numbers in context
+    const stepPatterns = [
+      /step\s*:?\s*(\d+)/i,           // "Step 5" or "Step: 5"
+      /step\s+(\d+)/i,                // "Step 5"
+      /^step\s*(\d+)/i,               // "Step5" at start
+      /\(step\s*(\d+)\)/i,            // "(Step 5)"
+      /\[step\s*(\d+)\]/i,            // "[Step 5]"
+    ]
+    
+    for (const pattern of stepPatterns) {
+      const match = content.match(pattern)
+      if (match && match[1]) {
+        const stepNum = parseInt(match[1], 10)
+        if (!isNaN(stepNum)) {
+          return stepNum
+        }
+      }
+    }
+    
+    // If no step pattern found, try to find a number that might represent a step
+    // Look for standalone numbers that could be step numbers (1-20 range)
+    const numberMatch = content.match(/\b([1-9]|1[0-9]|20)\b/)
+    if (numberMatch) {
+      const num = parseInt(numberMatch[1], 10)
+      if (!isNaN(num) && num >= 1 && num <= 20) {
+        return num
+      }
+    }
+    
+    return null
+  }
+
   const hasClickedNext = () => {
     // Find the most recent "Product Tour" message index
     let lastProductTourIndex = -1
@@ -155,16 +201,20 @@ function AgentWidget({
       return false
     }
     
-    // Check if there's a "next" message after the most recent Product Tour message
+    // Check if there's navigation after the most recent Product Tour message
+    // Navigation includes: "next", "prev", or item number selections (e.g., #6, 6, #1, etc.)
     // but before any "How else can I help you?" exit message
     for (let i = lastProductTourIndex + 1; i < messages.length; i++) {
       // If we hit an exit message, stop checking
       if (messages[i].role === 'assistant' && messages[i].content === 'How else can I help you?') {
         break
       }
-      // If we find a "next" message in this tour session, return true
-      if (messages[i].role === 'user' && messages[i].content.toLowerCase() === 'next') {
-        return true
+      // If we find navigation (next, prev, or item number), return true
+      if (messages[i].role === 'user') {
+        const content = messages[i].content.toLowerCase().trim()
+        if (content === 'next' || content === 'prev' || /^#?\d+$/.test(content)) {
+          return true
+        }
       }
     }
     
@@ -349,28 +399,40 @@ function AgentWidget({
                   )}
                   {message.role === 'assistant' && isInProductTour() && isLastAssistantMessage(index) && !isLoading && (
                     <div className="tour-actions">
-                      {hasClickedNext() && (
-                        <button 
-                          className="tour-button tour-button-prev"
-                          onClick={handlePrev}
-                          disabled={isLoading}
-                        >
-                          Prev
-                        </button>
-                      )}
-                      <button 
-                        className="tour-button tour-button-next"
-                        onClick={handleNext}
-                        disabled={isLoading}
-                      >
-                        Next
-                      </button>
-                      <button 
-                        className="tour-button tour-button-exit"
-                        onClick={handleExit}
-                      >
-                        Exit
-                      </button>
+                      {(() => {
+                        const currentStep = getCurrentStepNumber()
+                        const showPrev = hasClickedNext() && (currentStep === null || currentStep > 1)
+                        const showNext = currentStep === null || currentStep < 14
+                        
+                        return (
+                          <>
+                            {showPrev && (
+                              <button 
+                                className="tour-button tour-button-prev"
+                                onClick={handlePrev}
+                                disabled={isLoading}
+                              >
+                                Prev
+                              </button>
+                            )}
+                            {showNext && (
+                              <button 
+                                className="tour-button tour-button-next"
+                                onClick={handleNext}
+                                disabled={isLoading}
+                              >
+                                Next
+                              </button>
+                            )}
+                            <button 
+                              className="tour-button tour-button-exit"
+                              onClick={handleExit}
+                            >
+                              Exit
+                            </button>
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
