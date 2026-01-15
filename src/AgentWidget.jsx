@@ -66,7 +66,8 @@ function AgentWidget({
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: 'Hello! How can I help you today?'
+      content: 'Hello! How can I help you today?',
+      timestamp: new Date()
     }
   ])
   const [inputValue, setInputValue] = useState('')
@@ -93,7 +94,8 @@ function AgentWidget({
   const clearMessages = () => {
     setMessages([{
       role: 'assistant',
-      content: 'Hello! How can I help you today?'
+      content: 'Hello! How can I help you today?',
+      timestamp: new Date()
     }])
     setShowQuickActions(true)
   }
@@ -239,10 +241,20 @@ function AgentWidget({
     handleSendMessage('prev')
   }
 
+  const handleStepSelection = (stepNumber) => {
+    const userMessage = {
+      role: 'user',
+      content: stepNumber.toString()
+    }
+    setMessages(prev => [...prev, userMessage])
+    handleSendMessage(stepNumber.toString())
+  }
+
   const handleExit = () => {
     setMessages(prev => [...prev, {
       role: 'assistant',
-      content: 'How else can I help you?'
+      content: 'How else can I help you?',
+      timestamp: new Date()
     }])
     setShowQuickActions(true)
   }
@@ -304,7 +316,8 @@ function AgentWidget({
       
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: assistantMessage
+        content: assistantMessage,
+        timestamp: new Date()
       }])
     } catch (error) {
       console.error('Error calling agent API:', error)
@@ -374,9 +387,9 @@ function AgentWidget({
               <div key={index} className={`message ${message.role}`}>
                 {message.role === 'assistant' && (
                   <div className="message-avatar">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="8" r="4" fill="white"/>
-                      <path d="M6 21c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="white"/>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path fillRule="evenodd" clipRule="evenodd" d="M7.50009 6C7.50009 3.51472 9.51481 1.5 12.0001 1.5C14.4854 1.5 16.5001 3.51472 16.5001 6C16.5001 8.48528 14.4854 10.5 12.0001 10.5C9.51481 10.5 7.50009 8.48528 7.50009 6Z" fill="#fff"/>
+                      <path fillRule="evenodd" clipRule="evenodd" d="M3.75133 20.1053C3.82867 15.6156 7.49207 12 12.0001 12C16.5082 12 20.1717 15.6157 20.2488 20.1056C20.254 20.4034 20.0824 20.676 19.8117 20.8002C17.4328 21.8918 14.7866 22.5 12.0004 22.5C9.21395 22.5 6.56752 21.8917 4.18841 20.7999C3.91774 20.6757 3.7462 20.4031 3.75133 20.1053Z" fill="#fff"/>
                     </svg>
                   </div>
                 )}
@@ -391,49 +404,73 @@ function AgentWidget({
                   />
                   {message.role === 'user' && (
                     <div className="message-status">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                      </svg>
                       <span>Read {new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
                     </div>
                   )}
+                  {message.role === 'assistant' && (
+                    <div className="message-status">
+                      <span>Sent {message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                    </div>
+                  )}
                   {message.role === 'assistant' && isInProductTour() && isLastAssistantMessage(index) && !isLoading && (
-                    <div className="tour-actions">
+                    <>
+                      <div className="tour-actions">
+                        {(() => {
+                          const currentStep = getCurrentStepNumber()
+                          const showPrev = hasClickedNext() && (currentStep === null || currentStep > 1)
+                          const showNext = currentStep === null || currentStep < 14
+                          
+                          return (
+                            <>
+                              {showPrev && (
+                                <button 
+                                  className="tour-button tour-button-prev"
+                                  onClick={handlePrev}
+                                  disabled={isLoading}
+                                >
+                                  Prev
+                                </button>
+                              )}
+                              {showNext && (
+                                <button 
+                                  className="tour-button tour-button-next"
+                                  onClick={handleNext}
+                                  disabled={isLoading}
+                                >
+                                  Next
+                                </button>
+                              )}
+                              <button 
+                                className="tour-button tour-button-exit"
+                                onClick={handleExit}
+                              >
+                                Exit
+                              </button>
+                            </>
+                          )
+                        })()}
+                      </div>
                       {(() => {
                         const currentStep = getCurrentStepNumber()
-                        const showPrev = hasClickedNext() && (currentStep === null || currentStep > 1)
-                        const showNext = currentStep === null || currentStep < 14
-                        
-                        return (
-                          <>
-                            {showPrev && (
-                              <button 
-                                className="tour-button tour-button-prev"
-                                onClick={handlePrev}
-                                disabled={isLoading}
-                              >
-                                Prev
-                              </button>
-                            )}
-                            {showNext && (
-                              <button 
-                                className="tour-button tour-button-next"
-                                onClick={handleNext}
-                                disabled={isLoading}
-                              >
-                                Next
-                              </button>
-                            )}
-                            <button 
-                              className="tour-button tour-button-exit"
-                              onClick={handleExit}
-                            >
-                              Exit
-                            </button>
-                          </>
-                        )
+                        if (currentStep === 14) {
+                          return (
+                            <div className="step-selection-buttons">
+                              {Array.from({ length: 13 }, (_, i) => i + 1).map((stepNum) => (
+                                <button
+                                  key={stepNum}
+                                  className="step-circle-button"
+                                  onClick={() => handleStepSelection(stepNum)}
+                                  disabled={isLoading}
+                                >
+                                  {stepNum}
+                                </button>
+                              ))}
+                            </div>
+                          )
+                        }
+                        return null
                       })()}
-                    </div>
+                    </>
                   )}
                 </div>
                 {message.role === 'user' && (
@@ -449,9 +486,9 @@ function AgentWidget({
             {isLoading && (
               <div className="message assistant">
                 <div className="message-avatar">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="8" r="4" fill="white"/>
-                    <path d="M6 21c0-3.314 2.686-6 6-6s6 2.686 6 6" fill="white"/>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M7.50009 6C7.50009 3.51472 9.51481 1.5 12.0001 1.5C14.4854 1.5 16.5001 3.51472 16.5001 6C16.5001 8.48528 14.4854 10.5 12.0001 10.5C9.51481 10.5 7.50009 8.48528 7.50009 6Z" fill="#fff"/>
+                    <path fillRule="evenodd" clipRule="evenodd" d="M3.75133 20.1053C3.82867 15.6156 7.49207 12 12.0001 12C16.5082 12 20.1717 15.6157 20.2488 20.1056C20.254 20.4034 20.0824 20.676 19.8117 20.8002C17.4328 21.8918 14.7866 22.5 12.0004 22.5C9.21395 22.5 6.56752 21.8917 4.18841 20.7999C3.91774 20.6757 3.7462 20.4031 3.75133 20.1053Z" fill="#fff"/>
                   </svg>
                 </div>
                 <div className="message-content">
@@ -505,7 +542,6 @@ function AgentWidget({
               <input
                 type="text"
                 className="agent-input"
-                placeholder="Type your message..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 disabled={isLoading}
@@ -536,8 +572,9 @@ function AgentWidget({
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none">
+            <path fillRule="evenodd" clipRule="evenodd" d="M7.50009 6C7.50009 3.51472 9.51481 1.5 12.0001 1.5C14.4854 1.5 16.5001 3.51472 16.5001 6C16.5001 8.48528 14.4854 10.5 12.0001 10.5C9.51481 10.5 7.50009 8.48528 7.50009 6Z" fill="#fff"/>
+            <path fillRule="evenodd" clipRule="evenodd" d="M3.75133 20.1053C3.82867 15.6156 7.49207 12 12.0001 12C16.5082 12 20.1717 15.6157 20.2488 20.1056C20.254 20.4034 20.0824 20.676 19.8117 20.8002C17.4328 21.8918 14.7866 22.5 12.0004 22.5C9.21395 22.5 6.56752 21.8917 4.18841 20.7999C3.91774 20.6757 3.7462 20.4031 3.75133 20.1053Z" fill="#fff"/>
           </svg>
         )}
       </button>

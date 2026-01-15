@@ -383,7 +383,7 @@
 }
 
 .message.assistant .message-text p {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.25rem 0;
   line-height: 1.5;
 }
 
@@ -420,10 +420,11 @@
   display: flex;
   align-items: flex-start;
   flex-shrink: 0;
-  margin-top: 0.25rem;
+  bottom: 0;
 }
 
 .message-checkmark svg {
+  margin-top: 1.3rem;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
 }
 
@@ -431,11 +432,11 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.6875rem;
-  color: #4CAF50;
+  font-size: 0.6275rem;
+  color: #434943;
   margin-top: 0.125rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  font-weight: 400;
+  font-weight: 600;
 }
 
 .message-status svg {
@@ -490,14 +491,14 @@
   background: transparent;
   border: none;
   outline: none;
-  color: #666;
-  font-size: 0.6875rem;
+  color: #000000;
+  font-size: 0.6275rem;
   cursor: pointer;
   padding: 0;
   transition: color 0.2s ease;
   white-space: nowrap;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  font-weight: 400;
+  font-weight: 750;
   line-height: 1.2;
   display: inline-block;
   width: auto;
@@ -584,27 +585,27 @@
 
 .tour-button-prev {
   background: white;
-  color: #0061EB;
-  border-color: #0061EB;
+  color: #091c47;
+  border-color: #091c47;
 }
 
 .tour-button-prev:hover:not(:disabled) {
   background: #f0f7ff;
-  border-color: #0052d4;
-  color: #0052d4;
+  border-color: #0a255f;
+  color: #0a255f;
   transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(0, 97, 235, 0.2);
 }
 
 .tour-button-next {
-  background: #0061EB;
+  background: #031B4E;
   color: white;
-  border-color: #0061EB;
+  border-color: #031B4E;
 }
 
 .tour-button-next:hover:not(:disabled) {
-  background: #0052d4;
-  border-color: #0052d4;
+  background: #0a255f;
+  border-color: #0a255f;
   transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(0, 97, 235, 0.3);
 }
@@ -631,6 +632,59 @@
   box-shadow: 0 0 0 3px rgba(0, 97, 235, 0.1);
 }
 
+/* Step Selection Circle Buttons */
+.step-selection-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.5rem 0.1rem;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  justify-content: center;
+  align-items: center;
+}
+
+.step-circle-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #031B4E;
+  background: #031B4E;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  padding: 0;
+  min-width: 32px;
+}
+
+.step-circle-button:hover:not(:disabled) {
+  background: #031B4E;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(3, 27, 78, 0.3);
+}
+
+.step-circle-button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(3, 27, 78, 0.2);
+}
+
+.step-circle-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.step-circle-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(3, 27, 78, 0.1);
+}
+
 /* Agent Input Container */
 .agent-input-container {
   border-top: 1px solid #e0e0e0;
@@ -652,8 +706,8 @@
 .agent-input {
   flex: 1;
   padding: 0.625rem 0.875rem;
-  border: 1px solid #000;
-  border-radius: 8px;
+  border: 2px solid #000;
+  border-radius: 20px;
   font-size: 0.875rem;
   outline: none;
   transition: all 0.2s ease;
