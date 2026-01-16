@@ -186,6 +186,40 @@ function AgentWidget({
     return null
   }
 
+  const getTotalSteps = () => {
+    // Find the last assistant message
+    const lastAssistantMessage = [...messages].reverse().find(msg => msg.role === 'assistant')
+    
+    if (!lastAssistantMessage) {
+      return null
+    }
+    
+    const content = lastAssistantMessage.content
+    
+    // Try to extract total steps from patterns like:
+    // "Step 5 of 14", "step 5 of 14", "Step 5/14", "step 5/14", etc.
+    const totalStepsPatterns = [
+      /step\s*\d+\s+of\s+(\d+)/i,        // "Step 5 of 14"
+      /step\s*\d+\s*\/\s*(\d+)/i,        // "Step 5/14"
+      /step\s*\d+\s*out\s+of\s+(\d+)/i,  // "Step 5 out of 14"
+      /\(\d+\s*\/\s*(\d+)\)/i,           // "(5 / 14)"
+      /\[\d+\s*\/\s*(\d+)\]/i,           // "[5 / 14]"
+    ]
+    
+    for (const pattern of totalStepsPatterns) {
+      const match = content.match(pattern)
+      if (match && match[1]) {
+        const totalSteps = parseInt(match[1], 10)
+        if (!isNaN(totalSteps) && totalSteps > 0) {
+          return totalSteps
+        }
+      }
+    }
+    
+    // Default to 14 if no total found (backward compatibility)
+    return 14
+  }
+
   const hasClickedNext = () => {
     // Find the most recent "Product Tour" message index
     let lastProductTourIndex = -1
@@ -405,8 +439,9 @@ function AgentWidget({
                     <div className="tour-actions">
                       {(() => {
                         const currentStep = getCurrentStepNumber()
+                        const totalSteps = getTotalSteps()
                         const showPrev = hasClickedNext() && (currentStep === null || currentStep > 1)
-                        const showNext = currentStep === null || currentStep < 14
+                        const showNext = currentStep === null || (currentStep !== null && totalSteps !== null && currentStep < totalSteps)
                         
                         return (
                           <>
