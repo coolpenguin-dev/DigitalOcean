@@ -572,7 +572,7 @@
 .tour-button {
   padding: 0.5rem 1rem;
   border: 1px solid #e0e0e0;
-  border-radius: 25px;
+  border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -632,59 +632,6 @@
   box-shadow: 0 0 0 3px rgba(0, 97, 235, 0.1);
 }
 
-/* Step Selection Circle Buttons */
-.step-selection-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 0.5rem 0.1rem;
-  background: white;
-  border-top: 1px solid #e0e0e0;
-  justify-content: center;
-  align-items: center;
-}
-
-.step-circle-button {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid #031B4E;
-  background: #031B4E;
-  color: #ffffff;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  padding: 0;
-  min-width: 32px;
-}
-
-.step-circle-button:hover:not(:disabled) {
-  background: #031B4E;
-  color: white;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(3, 27, 78, 0.3);
-}
-
-.step-circle-button:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 1px 3px rgba(3, 27, 78, 0.2);
-}
-
-.step-circle-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.step-circle-button:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(3, 27, 78, 0.1);
-}
-
 /* Agent Input Container */
 .agent-input-container {
   border-top: 1px solid #e0e0e0;
@@ -706,7 +653,7 @@
 .agent-input {
   flex: 1;
   padding: 0.625rem 0.875rem;
-  border: 0px solid #000;
+  border: 2px solid #000;
   border-radius: 20px;
   font-size: 0.875rem;
   outline: none;
@@ -723,8 +670,8 @@
 }
 
 .agent-input:focus {
-  border-color: #242b35;
-  box-shadow: 0 0 0 2px #242b35;
+  border-color: #0061EB;
+  box-shadow: 0 0 0 1px #0061EB;
 }
 
 .agent-input:disabled {
@@ -738,7 +685,7 @@
   height: 36px;
   border: none;
   border-radius: 8px;
-  background: #213547;
+  background: #0061EB;
   color: white;
   cursor: pointer;
   display: flex;
@@ -750,17 +697,17 @@
 }
 
 .send-button:hover:not(:disabled) {
-  background: #2d4153;
+  background: #0052d4;
 }
 
 .send-button:active:not(:disabled) {
-  background: #2d4153;
+  background: #0047b8;
 }
 
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: #213547;
+  background: #0061EB;
 }
 
 /* Global styles for DigitalOcean agent widget positioning */

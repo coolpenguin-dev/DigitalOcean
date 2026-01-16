@@ -116,13 +116,11 @@ function AgentWidget({
     const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user')
     
     // Check if the last user action was product tour related
-    // Includes: Product Tour, next, prev, or item number selections (e.g., #6, 6, #1, etc.)
-    const isItemNumber = lastUserMessage && /^#?\d+$/.test(lastUserMessage.content.trim())
+    // Includes: Product Tour, next, or prev only
     const isStillInTour = lastUserMessage && (
       lastUserMessage.content.toLowerCase().includes('product tour') || 
       lastUserMessage.content.toLowerCase() === 'next' ||
-      lastUserMessage.content.toLowerCase() === 'prev' ||
-      isItemNumber
+      lastUserMessage.content.toLowerCase() === 'prev'
     )
     
     // Don't show buttons if we've already exited (last message is "How else can I help you?")
@@ -204,17 +202,17 @@ function AgentWidget({
     }
     
     // Check if there's navigation after the most recent Product Tour message
-    // Navigation includes: "next", "prev", or item number selections (e.g., #6, 6, #1, etc.)
+    // Navigation includes: "next" or "prev" only
     // but before any "How else can I help you?" exit message
     for (let i = lastProductTourIndex + 1; i < messages.length; i++) {
       // If we hit an exit message, stop checking
       if (messages[i].role === 'assistant' && messages[i].content === 'How else can I help you?') {
         break
       }
-      // If we find navigation (next, prev, or item number), return true
+      // If we find navigation (next or prev), return true
       if (messages[i].role === 'user') {
         const content = messages[i].content.toLowerCase().trim()
-        if (content === 'next' || content === 'prev' || /^#?\d+$/.test(content)) {
+        if (content === 'next' || content === 'prev') {
           return true
         }
       }
@@ -239,15 +237,6 @@ function AgentWidget({
     }
     setMessages(prev => [...prev, userMessage])
     handleSendMessage('prev')
-  }
-
-  const handleStepSelection = (stepNumber) => {
-    const userMessage = {
-      role: 'user',
-      content: stepNumber.toString()
-    }
-    setMessages(prev => [...prev, userMessage])
-    handleSendMessage(stepNumber.toString())
   }
 
   const handleExit = () => {
@@ -413,64 +402,42 @@ function AgentWidget({
                     </div>
                   )}
                   {message.role === 'assistant' && isInProductTour() && isLastAssistantMessage(index) && !isLoading && (
-                    <>
-                      <div className="tour-actions">
-                        {(() => {
-                          const currentStep = getCurrentStepNumber()
-                          const showPrev = hasClickedNext() && (currentStep === null || currentStep > 1)
-                          const showNext = currentStep === null || currentStep < 14
-                          
-                          return (
-                            <>
-                              {showPrev && (
-                                <button 
-                                  className="tour-button tour-button-prev"
-                                  onClick={handlePrev}
-                                  disabled={isLoading}
-                                >
-                                  Prev
-                                </button>
-                              )}
-                              {showNext && (
-                                <button 
-                                  className="tour-button tour-button-next"
-                                  onClick={handleNext}
-                                  disabled={isLoading}
-                                >
-                                  Next
-                                </button>
-                              )}
-                              <button 
-                                className="tour-button tour-button-exit"
-                                onClick={handleExit}
-                              >
-                                Exit
-                              </button>
-                            </>
-                          )
-                        })()}
-                      </div>
+                    <div className="tour-actions">
                       {(() => {
                         const currentStep = getCurrentStepNumber()
-                        if (currentStep === 14) {
-                          return (
-                            <div className="step-selection-buttons">
-                              {Array.from({ length: 13 }, (_, i) => i + 1).map((stepNum) => (
-                                <button
-                                  key={stepNum}
-                                  className="step-circle-button"
-                                  onClick={() => handleStepSelection(stepNum)}
-                                  disabled={isLoading}
-                                >
-                                  {stepNum}
-                                </button>
-                              ))}
-                            </div>
-                          )
-                        }
-                        return null
+                        const showPrev = hasClickedNext() && (currentStep === null || currentStep > 1)
+                        const showNext = currentStep === null || currentStep < 14
+                        
+                        return (
+                          <>
+                            {showPrev && (
+                              <button 
+                                className="tour-button tour-button-prev"
+                                onClick={handlePrev}
+                                disabled={isLoading}
+                              >
+                                Prev
+                              </button>
+                            )}
+                            {showNext && (
+                              <button 
+                                className="tour-button tour-button-next"
+                                onClick={handleNext}
+                                disabled={isLoading}
+                              >
+                                Next
+                              </button>
+                            )}
+                            <button 
+                              className="tour-button tour-button-exit"
+                              onClick={handleExit}
+                            >
+                              Exit
+                            </button>
+                          </>
+                        )
                       })()}
-                    </>
+                    </div>
                   )}
                 </div>
                 {message.role === 'user' && (
